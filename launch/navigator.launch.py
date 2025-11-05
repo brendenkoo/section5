@@ -11,7 +11,7 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
-            DeclareLaunchArgument("use_sim_time", default_value="true"),
+            DeclareLaunchArgument("use_sim_time", default_value="false"),
             IncludeLaunchDescription(
                 PathJoinSubstitution(
                     [FindPackageShare("asl_tb3_sim"), "launch", "rviz.launch.py"]
