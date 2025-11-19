@@ -48,6 +48,8 @@ class FrontierExploration(Node):
         self.waiting_for_nav = False
         self.exploration_complete = False
         self.no_frontier_count = 0
+        self.image_detected = False
+        self.image_pause_timer = None
         
         # Parameters
         self.frontier_threshold = 5  # Minimum number of frontier cells to consider
@@ -58,20 +60,30 @@ class FrontierExploration(Node):
         self.startup_timer = self.create_timer(2.0, self.startup_check_callback)
         self.startup_complete = False
         
-        self.get_logger().info("Frontier Exploration Node initialized!")
-
     def image_callback(self, msg):
         if msg.data:
             self.get_logger().info("Image detected!")
-            self.image_detected = True
-            # if stop sign, detected, sleep for 5 seconds
-            time.sleep(5)
-            self.image_detected = False
-            self.compute_and_send_next_goal()
-
+            # Start a non-blocking 5s pause using a one-shot timer to avoid blocking ROS callbacks
+            if self.image_pause_timer is None:
+                self.image_detected = True
+                # create_timer will call _image_pause_done after ~5 seconds; we cancel it inside that callback
+                self.image_pause_timer = self.create_timer(5.0, self._image_pause_done)
+            else:
+                self.get_logger().info("Already pausing for image; ignoring additional detections.")
         else:
             self.get_logger().info("No image detected.")
             self.image_detected = False
+
+    def _image_pause_done(self):
+        # Timer callback runs; cancel the timer to make this effectively one-shot, then resume exploration.
+        if self.image_pause_timer is not None:
+            self.image_pause_timer.cancel()
+            self.image_pause_timer = None
+
+        self.image_detected = False
+        self.get_logger().info("Image pause complete; resuming exploration.")
+        # Resume exploration after pause
+        self.compute_and_send_next_goal()
 
         
     def state_callback(self, msg: TurtleBotState):
