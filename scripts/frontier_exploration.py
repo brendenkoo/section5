@@ -9,6 +9,7 @@ from std_msgs.msg import Bool
 from asl_tb3_msgs.msg import TurtleBotState
 from asl_tb3_lib.grids import StochOccupancyGrid2D
 from scipy.signal import convolve2d
+import time
 
 
 class FrontierExploration(Node):
@@ -37,6 +38,8 @@ class FrontierExploration(Node):
         self.nav_success_sub = self.create_subscription(
             Bool, "/nav_success", self.nav_success_callback, 10
         )
+        self.sub = self.create_subscription(Bool, "/detector_bool", self.image_callback, 10)
+
         
         # State variables
         self.current_state = None
@@ -56,6 +59,20 @@ class FrontierExploration(Node):
         self.startup_complete = False
         
         self.get_logger().info("Frontier Exploration Node initialized!")
+
+    def image_callback(self, msg):
+        if msg.data:
+            self.get_logger().info("Image detected!")
+            self.image_detected = True
+            # if stop sign, detected, sleep for 5 seconds
+            time.sleep(5)
+            self.image_detected = False
+            self.compute_and_send_next_goal()
+
+        else:
+            self.get_logger().info("No image detected.")
+            self.image_detected = False
+
         
     def state_callback(self, msg: TurtleBotState):
         """Update current robot state."""
